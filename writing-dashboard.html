@@ -716,6 +716,19 @@ function updateGoalCard(type, counts) {
   const wipPct = goal > 0 ? (wip / goal * 100) : 0;
   document.getElementById('goalBar' + (type === 'aione' ? 'Aione' : 'Buppan') + 'Done').style.width = Math.min(100, donePct) + '%';
   document.getElementById('goalBar' + (type === 'aione' ? 'Aione' : 'Buppan') + 'Wip').style.width = Math.min(100 - donePct, wipPct) + '%';
+
+  // Update summary cards
+  const summaryTotal = document.getElementById('summary_' + type + '_total');
+  const summaryTodo = document.getElementById('summary_' + type + '_todo');
+  if (summaryTotal && summaryTodo) {
+    if (goal > 0) {
+      summaryTotal.textContent = goal;
+      summaryTodo.textContent = remaining;
+    } else {
+      summaryTotal.textContent = counts.total;
+      summaryTodo.textContent = counts.total - counts.done - counts.wip;
+    }
+  }
 }
 
 // =====================
@@ -856,14 +869,17 @@ function renderBlog(articles, panelId) {
   });
 
   const total = articles.length;
+  const goal = parseInt(document.getElementById(blogKey === 'aione' ? 'goalAione' : 'goalBuppan').value) || 0;
+  const displayTotal = goal > 0 ? goal : total;
+  const displayTodo = goal > 0 ? Math.max(0, goal - totalDone - totalWip) : totalTodo;
   let html = '';
 
   html += `
     <div class="summary-cards">
-      <div class="card total"><div class="number">${total}</div><div class="label">全記事数</div></div>
-      <div class="card done"><div class="number">${totalDone}</div><div class="label">完了</div></div>
-      <div class="card wip"><div class="number">${totalWip}</div><div class="label">進行中</div></div>
-      <div class="card todo"><div class="number">${totalTodo}</div><div class="label">未着手</div></div>
+      <div class="card total"><div class="number" id="summary_${blogKey}_total">${displayTotal}</div><div class="label">全記事数</div></div>
+      <div class="card done"><div class="number" id="summary_${blogKey}_done">${totalDone}</div><div class="label">完了</div></div>
+      <div class="card wip"><div class="number" id="summary_${blogKey}_wip">${totalWip}</div><div class="label">進行中</div></div>
+      <div class="card todo"><div class="number" id="summary_${blogKey}_todo">${displayTodo}</div><div class="label">未着手</div></div>
     </div>`;
 
   const authors = Object.keys(authorMap);
