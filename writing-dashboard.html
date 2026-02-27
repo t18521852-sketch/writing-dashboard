@@ -68,6 +68,23 @@
   }
   .btn-refresh:hover { background: #2563eb; color: white; }
   .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-save {
+    background: #10b981;
+    color: white;
+    border: 1px solid #10b981;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .btn-save:hover { background: #059669; border-color: #059669; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  .save-status { font-size: 12px; color: #10b981; font-weight: 600; display: none; }
   .btn-refresh .spinner {
     display: inline-block;
     width: 14px; height: 14px;
@@ -518,9 +535,15 @@
 <div class="container">
   <div class="toolbar">
     <div id="dataSourceBadge"></div>
-    <button class="btn-refresh" id="btnRefresh" onclick="fetchAndRender()">
-      ↻ データを更新
-    </button>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="save-status" id="goalSaveStatus">✓ 保存しました</span>
+      <button class="btn-save" id="btnSaveGoals" onclick="saveGoalsToCloud()">
+        💾 目標を保存
+      </button>
+      <button class="btn-refresh" id="btnRefresh" onclick="fetchAndRender()">
+        ↻ データを更新
+      </button>
+    </div>
   </div>
 
   <!-- 目標セクション -->
@@ -532,7 +555,7 @@
           <div class="goal-card-title">AI ONE 新規記事</div>
           <div class="goal-input-wrap">
             <label>目標</label>
-            <input type="number" class="goal-input" id="goalAione" min="0" max="99" value="0" onchange="saveGoals(); updateGoals();">
+            <input type="number" class="goal-input" id="goalAione" min="0" max="99" value="8" onchange="saveGoals(); updateGoals();">
             <span>本</span>
           </div>
         </div>
@@ -570,7 +593,7 @@
           <div class="goal-card-title">物販ONE 新規記事</div>
           <div class="goal-input-wrap">
             <label>目標</label>
-            <input type="number" class="goal-input" id="goalBuppan" min="0" max="99" value="0" onchange="saveGoals(); updateGoals();">
+            <input type="number" class="goal-input" id="goalBuppan" min="0" max="99" value="5" onchange="saveGoals(); updateGoals();">
             <span>本</span>
           </div>
         </div>
@@ -633,6 +656,7 @@
 const SPREADSHEET_ID = '1N7r5n0onwvvIB2d4brMmtUieu534D96Z9P7LnqLszxg';
 const GID_AIONE = '79485171';
 const GID_BUPPAN = '799181145';
+const GOALS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx3vd4nYAHrCaDKO_6kTcRdA3P5oITMLag7_9_cf_ZfBppX-pJ9BqQtZfEZXDSZnfZ-qA/exec';
 // ============================================================
 
 const TARGET_YEAR = 2026;
@@ -674,12 +698,18 @@ function saveAuthorGoal(blogKey, author, value) {
   localStorage.setItem(storageKey, JSON.stringify(all));
 }
 
+const DEFAULT_AUTHOR_GOALS = {
+  aione: { '大宮さん': 1, 'えりこさん': 1, '福田さん': 1, 'ハナさん': 1, 'リョータさん': 1 },
+  buppan: { 'ハナさん': 1, '山本さん': 1 }
+};
+
 function getAuthorGoal(blogKey, author) {
   const storageKey = 'dashboard_author_goals_2026_02';
   try {
     const all = JSON.parse(localStorage.getItem(storageKey)) || {};
-    return (all[blogKey] && all[blogKey][author]) || 0;
-  } catch(e) { return 0; }
+    if (all[blogKey] && all[blogKey][author] !== undefined) return all[blogKey][author];
+  } catch(e) {}
+  return (DEFAULT_AUTHOR_GOALS[blogKey] && DEFAULT_AUTHOR_GOALS[blogKey][author]) || 0;
 }
 
 function updateGoals() {
@@ -910,7 +940,7 @@ function renderBlog(articles, panelId) {
             <label>目標</label>
             <input type="number" class="author-goal-input" min="0" max="99" value="${authorGoal}"
               onchange="saveAuthorGoal('${blogKey}','${safeAuthor}',this.value); updateAuthorGoalUI(this);"
-              data-done="${a.done.length}">
+              data-done="${a.done.length}" data-blog="${blogKey}" data-author="${safeAuthor}">
             <span>本</span>
             <span class="author-goal-pct" style="margin-left:6px;">${authorGoal > 0 ? goalPct + '%' : '—'}</span>
           </div>
@@ -1140,6 +1170,9 @@ async function fetchAndRender() {
   // Update goals
   updateGoals();
 
+  // クラウドから目標を読み込み（設定済みの場合）
+  loadGoalsFromCloud();
+
   btn.disabled = false;
   btn.innerHTML = '↻ データを更新';
   isLoading = false;
@@ -1156,6 +1189,92 @@ function updateAuthorGoalUI(inputEl) {
   const barEl = row.querySelector('.author-goal-bar-fill');
   pctEl.textContent = goal > 0 ? pct + '%' : '—';
   barEl.style.width = barPct + '%';
+}
+
+// =====================
+// Cloud Goal Sync
+// =====================
+function loadGoalsFromCloud() {
+  if (!GOALS_SCRIPT_URL) return;
+  var cbName = '_goalsLoad_' + Date.now();
+  var script = document.createElement('script');
+  window[cbName] = function(data) {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    if (data && typeof data === 'object') applyCloudGoals(data);
+  };
+  script.src = GOALS_SCRIPT_URL + '?callback=' + cbName;
+  script.onerror = function() {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+  };
+  document.head.appendChild(script);
+  setTimeout(function() { delete window[cbName]; }, 15000);
+}
+
+function applyCloudGoals(data) {
+  if (data.goalAione !== undefined) document.getElementById('goalAione').value = data.goalAione;
+  if (data.goalBuppan !== undefined) document.getElementById('goalBuppan').value = data.goalBuppan;
+  document.querySelectorAll('.author-goal-input').forEach(function(input) {
+    var key = 'author_' + input.dataset.blog + '_' + input.dataset.author;
+    if (data[key] !== undefined) {
+      input.value = data[key];
+      updateAuthorGoalUI(input);
+    }
+  });
+  updateGoals();
+}
+
+function saveGoalsToCloud() {
+  if (!GOALS_SCRIPT_URL) {
+    alert('クラウド保存を使うにはGoogle Apps Scriptの設定が必要です。');
+    return;
+  }
+  var btn = document.getElementById('btnSaveGoals');
+  btn.disabled = true;
+  btn.innerHTML = '保存中...';
+  var goals = collectAllGoals();
+  var cbName = '_goalsSave_' + Date.now();
+  var script = document.createElement('script');
+  window[cbName] = function() {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    btn.disabled = false;
+    btn.innerHTML = '💾 目標を保存';
+    var status = document.getElementById('goalSaveStatus');
+    status.style.display = 'inline';
+    setTimeout(function() { status.style.display = 'none'; }, 3000);
+  };
+  var dataStr = encodeURIComponent(JSON.stringify(goals));
+  script.src = GOALS_SCRIPT_URL + '?action=save&data=' + dataStr + '&callback=' + cbName;
+  script.onerror = function() {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    btn.disabled = false;
+    btn.innerHTML = '💾 目標を保存';
+    alert('保存に失敗しました');
+  };
+  document.head.appendChild(script);
+  setTimeout(function() {
+    if (window[cbName]) {
+      delete window[cbName];
+      btn.disabled = false;
+      btn.innerHTML = '💾 目標を保存';
+    }
+  }, 15000);
+}
+
+function collectAllGoals() {
+  var goals = {
+    goalAione: parseInt(document.getElementById('goalAione').value) || 0,
+    goalBuppan: parseInt(document.getElementById('goalBuppan').value) || 0
+  };
+  document.querySelectorAll('.author-goal-input').forEach(function(input) {
+    if (input.dataset.blog && input.dataset.author) {
+      goals['author_' + input.dataset.blog + '_' + input.dataset.author] = parseInt(input.value) || 0;
+    }
+  });
+  return goals;
 }
 
 // 初期化
