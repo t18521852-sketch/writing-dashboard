@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>執筆進捗ダッシュボード（2月分）</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', sans-serif;
+    background: #f0f2f5;
+    color: #1a1a2e;
+    line-height: 1.6;
+  }
+  .header {
+    background: linear-gradient(135deg, #2563eb 0%, #1e3a5f 100%);
+    color: white;
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header .subtitle { font-size: 13px; opacity: 0.85; }
+  .header-right { text-align: right; }
+  .header .updated { font-size: 12px; opacity: 0.7; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .data-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .data-source-badge.live { background: #d1fae5; color: #065f46; }
+  .data-source-badge.local { background: #fef3c7; color: #92400e; }
+  .data-source-badge .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .data-source-badge.live .dot { background: #10b981; animation: pulse 2s infinite; }
+  .data-source-badge.local .dot { background: #f59e0b; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .btn-refresh {
+    background: white;
+    border: 1px solid #e2e8f0;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2563eb;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .btn-refresh:hover { background: #2563eb; color: white; }
+  .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-refresh .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== Goal Section ===== */
+  .goal-section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .goal-section h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f2f5;
+  }
+  .goal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .goal-card {
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .goal-card.aione-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #93c5fd;
+  }
+  .goal-card.buppan-card {
+    background: linear-gradient(135deg, #f0f4fa 0%, #e2e8f0 100%);
+    border: 1px solid #94a3b8;
+  }
+  .goal-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .goal-card-title {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .aione-card .goal-card-title { color: #2563eb; }
+  .buppan-card .goal-card-title { color: #1e3a5f; }
+  .goal-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #64748b;
+  }
+  .goal-input-wrap label { font-weight: 600; }
+  .goal-input {
+    width: 52px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    background: white;
+  }
+  .goal-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+  .buppan-card .goal-input:focus { border-color: #1e3a5f; box-shadow: 0 0 0 2px rgba(30,58,95,0.2); }
+  .goal-body {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .goal-ring-wrap {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+  .goal-ring-wrap svg {
+    transform: rotate(-90deg);
+    width: 100px;
+    height: 100px;
+  }
+  .goal-ring-bg { fill: none; stroke: #e2e8f0; stroke-width: 8; }
+  .aione-card .goal-ring-fg { fill: none; stroke: #2563eb; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .buppan-card .goal-ring-fg { fill: none; stroke: #1e3a5f; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+  .goal-ring-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 22px;
+    font-weight: 800;
+  }
+  .aione-card .goal-ring-text { color: #2563eb; }
+  .buppan-card .goal-ring-text { color: #1e3a5f; }
+  .goal-stats {
+    flex: 1;
+  }
+  .goal-stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+  .goal-stat-row:last-child { border-bottom: none; }
+  .goal-stat-label { color: #64748b; }
+  .goal-stat-value { font-weight: 700; }
+  .goal-stat-value.done-color { color: #10b981; }
+  .goal-stat-value.wip-color { color: #f59e0b; }
+  .goal-stat-value.remaining-color { color: #ef4444; }
+  .goal-stat-value.complete-color { color: #10b981; }
+  .goal-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin-top: 12px;
+    overflow: hidden;
+    display: flex;
+  }
+  .goal-progress-done { height: 100%; transition: width 0.5s ease; border-radius: 4px 0 0 4px; }
+  .goal-progress-wip { height: 100%; transition: width 0.5s ease; }
+  .aione-card .goal-progress-done { background: #2563eb; }
+  .aione-card .goal-progress-wip { background: #93c5fd; }
+  .buppan-card .goal-progress-done { background: #1e3a5f; }
+  .buppan-card .goal-progress-wip { background: #64748b; }
+
+  /* Tabs */
+  .tab-container {
+    display: flex;
+    gap: 0;
+    margin-bottom: 24px;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 16px 20px;
+    border: none;
+    background: white;
+    font-size: 15px;
+    font-weight: 700;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    text-align: center;
+  }
+  .tab-btn:hover { background: #f8fafc; color: #475569; }
+  .tab-btn.active-aione {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    background: #eff6ff;
+  }
+  .tab-btn.active-buppan {
+    color: #1e3a5f;
+    border-bottom-color: #1e3a5f;
+    background: #f0f4fa;
+  }
+  .tab-btn .tab-count {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .tab-btn.active-aione .tab-count { background: #2563eb; color: white; }
+  .tab-btn.active-buppan .tab-count { background: #1e3a5f; color: white; }
+  .tab-btn:not([class*="active-"]) .tab-count { background: #e2e8f0; color: #64748b; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Blog theme colors */
+  .theme-buppan .section h2 { color: #1e3a5f; }
+  .theme-buppan .progress-segment.done { background: #10b981; }
+  .theme-buppan .progress-segment.wip { background: #f59e0b; }
+  .theme-buppan .status-badge.done { background: #d1fae5; color: #065f46; }
+  .theme-buppan .status-badge.wip { background: #fef3c7; color: #92400e; }
+  .theme-buppan .kw-link { color: #1e3a5f; }
+  .theme-buppan .author-detail h3 span:nth-child(2) { color: #1e3a5f !important; }
+
+  /* Summary Cards */
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  .card .number { font-size: 36px; font-weight: 800; }
+  .card .label { font-size: 13px; color: #666; margin-top: 4px; }
+  .card.total .number { color: #2563eb; }
+  .card.done .number { color: #10b981; }
+  .card.wip .number { color: #f59e0b; }
+  .card.todo .number { color: #94a3b8; }
+  .theme-buppan .card.total .number { color: #1e3a5f; }
+  .theme-buppan .card.done .number { color: #10b981; }
+
+  /* Section */
+  .section {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .section h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f0f2f5;
+  }
+
+  /* Author Progress */
+  .author-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .author-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .author-name {
+    width: 90px;
+    font-weight: 600;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .author-main {
+    flex: 1;
+    min-width: 200px;
+  }
+  .progress-bar-container {
+    width: 100%;
+    height: 24px;
+    background: #f0f2f5;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+  }
+  .progress-segment {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    transition: width 0.5s ease;
+  }
+  .progress-segment.done { background: #10b981; }
+  .progress-segment.wip { background: #f59e0b; }
+  .progress-segment.todo-seg { background: #cbd5e1; color: #64748b; }
+  .author-stats {
+    font-size: 11px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .author-goal-area {
+    width: 180px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .author-goal-input-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #64748b;
+  }
+  .author-goal-input-row label { font-weight: 600; }
+  .author-goal-input {
+    width: 42px;
+    padding: 3px 4px;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    background: white;
+  }
+  .author-goal-input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+  .author-goal-bar-wrap {
+    width: 100%;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .author-goal-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: #2563eb;
+    transition: width 0.5s ease;
+  }
+  .theme-buppan .author-goal-bar-fill { background: #1e3a5f; }
+  .theme-buppan .author-goal-input:focus { border-color: #1e3a5f; box-shadow: 0 0 0 2px rgba(30,58,95,0.15); }
+  .author-goal-pct {
+    font-size: 18px;
+    font-weight: 800;
+    color: #2563eb;
+    line-height: 1;
+  }
+  .theme-buppan .author-goal-pct { color: #1e3a5f; }
+
+  /* Detail Tables */
+  .author-detail { margin-bottom: 24px; }
+  .author-detail h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .author-detail h3 .toggle { font-size: 12px; color: #94a3b8; }
+  .detail-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+  .detail-table th:nth-child(1),
+  .detail-table td:nth-child(1) { width: 6%; text-align: center; }
+  .detail-table th:nth-child(2),
+  .detail-table td:nth-child(2) { width: 28%; }
+  .detail-table th:nth-child(3),
+  .detail-table td:nth-child(3) { width: 12%; text-align: center; }
+  .detail-table th:nth-child(4),
+  .detail-table td:nth-child(4) { width: 18%; text-align: center; }
+  .detail-table th:nth-child(5),
+  .detail-table td:nth-child(5) { width: 18%; text-align: center; }
+  .detail-table th:nth-child(6),
+  .detail-table td:nth-child(6) { width: 18%; text-align: center; }
+  .detail-table th {
+    background: #f8fafc;
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  .detail-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f2f5;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .detail-table td:nth-child(2) { white-space: normal; }
+  .detail-table tr:hover td { background: #f8fafc; }
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .status-badge.done { background: #d1fae5; color: #065f46; }
+  .status-badge.wip { background: #fef3c7; color: #92400e; }
+  .status-badge.todo-status { background: #f1f5f9; color: #64748b; }
+  .kw-link { color: #2563eb; text-decoration: none; }
+  .kw-link:hover { text-decoration: underline; }
+  .hidden { display: none; }
+
+  /* Loading */
+  .loading-overlay {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+  }
+  .loading-overlay .spinner-lg {
+    width: 40px; height: 40px;
+    border: 3px solid #e2e8f0;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #94a3b8;
+    font-size: 14px;
+  }
+
+  @media (max-width: 640px) {
+    .header { padding: 16px; }
+    .header h1 { font-size: 18px; }
+    .container { padding: 16px 8px; }
+    .section { padding: 16px; }
+    .goal-section { padding: 16px; }
+    .goal-grid { grid-template-columns: 1fr; }
+    .goal-card { padding: 16px; }
+    .goal-body { flex-direction: column; align-items: flex-start; }
+    .author-row { gap: 8px; }
+    .author-name { width: 70px; font-size: 13px; }
+    .author-goal-area { width: 100%; flex-direction: row; justify-content: space-between; }
+    .detail-table { font-size: 12px; }
+    .detail-table th, .detail-table td { padding: 8px 6px; }
+    .tab-btn { font-size: 13px; padding: 12px 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>執筆進捗ダッシュボード（2月分）</h1>
+    <div class="subtitle">ブログ記事管理 - 2026年2月</div>
+  </div>
+  <div class="header-right">
+    <div class="updated" id="lastUpdated"></div>
+  </div>
+</div>
+
+<div class="container">
+  <div class="toolbar">
+    <div id="dataSourceBadge"></div>
+    <button class="btn-refresh" id="btnRefresh" onclick="fetchAndRender()">
+      ↻ データを更新
+    </button>
+  </div>
+
+  <!-- 目標セクション -->
+  <div class="goal-section">
+    <h2>月間目標と達成状況</h2>
+    <div class="goal-grid">
+      <div class="goal-card aione-card">
+        <div class="goal-card-header">
+          <div class="goal-card-title">AI ONE 新規記事</div>
+          <div class="goal-input-wrap">
+            <label>目標</label>
+            <input type="number" class="goal-input" id="goalAione" min="0" max="99" value="0" onchange="saveGoals(); updateGoals();">
+            <span>本</span>
+          </div>
+        </div>
+        <div class="goal-body">
+          <div class="goal-ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <circle class="goal-ring-bg" cx="50" cy="50" r="42" />
+              <circle class="goal-ring-fg" id="ringAione" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9" />
+            </svg>
+            <div class="goal-ring-text" id="ringTextAione">0%</div>
+          </div>
+          <div class="goal-stats">
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">完了</span>
+              <span class="goal-stat-value done-color" id="goalAioneDone">0本</span>
+            </div>
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">進行中</span>
+              <span class="goal-stat-value wip-color" id="goalAioneWip">0本</span>
+            </div>
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">残り</span>
+              <span class="goal-stat-value remaining-color" id="goalAioneRemaining">0本</span>
+            </div>
+          </div>
+        </div>
+        <div class="goal-progress-bar">
+          <div class="goal-progress-done" id="goalBarAioneDone" style="width:0%"></div>
+          <div class="goal-progress-wip" id="goalBarAioneWip" style="width:0%"></div>
+        </div>
+      </div>
+
+      <div class="goal-card buppan-card">
+        <div class="goal-card-header">
+          <div class="goal-card-title">物販ONE 新規記事</div>
+          <div class="goal-input-wrap">
+            <label>目標</label>
+            <input type="number" class="goal-input" id="goalBuppan" min="0" max="99" value="0" onchange="saveGoals(); updateGoals();">
+            <span>本</span>
+          </div>
+        </div>
+        <div class="goal-body">
+          <div class="goal-ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <circle class="goal-ring-bg" cx="50" cy="50" r="42" />
+              <circle class="goal-ring-fg" id="ringBuppan" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9" />
+            </svg>
+            <div class="goal-ring-text" id="ringTextBuppan">0%</div>
+          </div>
+          <div class="goal-stats">
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">完了</span>
+              <span class="goal-stat-value done-color" id="goalBuppanDone">0本</span>
+            </div>
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">進行中</span>
+              <span class="goal-stat-value wip-color" id="goalBuppanWip">0本</span>
+            </div>
+            <div class="goal-stat-row">
+              <span class="goal-stat-label">残り</span>
+              <span class="goal-stat-value remaining-color" id="goalBuppanRemaining">0本</span>
+            </div>
+          </div>
+        </div>
+        <div class="goal-progress-bar">
+          <div class="goal-progress-done" id="goalBarBuppanDone" style="width:0%"></div>
+          <div class="goal-progress-wip" id="goalBarBuppanWip" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-container" id="tabContainer">
+    <button class="tab-btn active-aione" id="tabAione" onclick="switchTab('aione')">
+      AI ONE 公式ブログ <span class="tab-count" id="countAione">-</span>
+    </button>
+    <button class="tab-btn" id="tabBuppan" onclick="switchTab('buppan')">
+      物販ONE 公式ブログ <span class="tab-count" id="countBuppan">-</span>
+    </button>
+  </div>
+
+  <div id="panelAione" class="tab-panel active">
+    <div class="loading-overlay">
+      <div class="spinner-lg"></div>
+      <div>データを読み込み中...</div>
+    </div>
+  </div>
+  <div id="panelBuppan" class="tab-panel theme-buppan">
+    <div class="loading-overlay">
+      <div class="spinner-lg"></div>
+      <div>データを読み込み中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+const SPREADSHEET_ID = '1N7r5n0onwvvIB2d4brMmtUieu534D96Z9P7LnqLszxg';
+const GID_AIONE = '79485171';
+const GID_BUPPAN = '799181145';
+// ============================================================
+
+const TARGET_YEAR = 2026;
+const TARGET_MONTH = 2;
+
+let currentTab = 'aione';
+
+// グローバルで記事数を保持
+let latestCounts = { aione: { done: 0, wip: 0, total: 0 }, buppan: { done: 0, wip: 0, total: 0 } };
+
+// =====================
+// 目標の保存・読込
+// =====================
+function saveGoals() {
+  const goals = {
+    aione: parseInt(document.getElementById('goalAione').value) || 0,
+    buppan: parseInt(document.getElementById('goalBuppan').value) || 0
+  };
+  localStorage.setItem('dashboard_goals_2026_02', JSON.stringify(goals));
+}
+
+function loadGoals() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('dashboard_goals_2026_02'));
+    if (saved) {
+      document.getElementById('goalAione').value = saved.aione || 0;
+      document.getElementById('goalBuppan').value = saved.buppan || 0;
+    }
+  } catch(e) {}
+}
+
+// ライター別目標の保存・読込
+function saveAuthorGoal(blogKey, author, value) {
+  const storageKey = 'dashboard_author_goals_2026_02';
+  let all = {};
+  try { all = JSON.parse(localStorage.getItem(storageKey)) || {}; } catch(e) {}
+  if (!all[blogKey]) all[blogKey] = {};
+  all[blogKey][author] = parseInt(value) || 0;
+  localStorage.setItem(storageKey, JSON.stringify(all));
+}
+
+function getAuthorGoal(blogKey, author) {
+  const storageKey = 'dashboard_author_goals_2026_02';
+  try {
+    const all = JSON.parse(localStorage.getItem(storageKey)) || {};
+    return (all[blogKey] && all[blogKey][author]) || 0;
+  } catch(e) { return 0; }
+}
+
+function updateGoals() {
+  updateGoalCard('aione', latestCounts.aione);
+  updateGoalCard('buppan', latestCounts.buppan);
+}
+
+function updateGoalCard(type, counts) {
+  const goalEl = document.getElementById(type === 'aione' ? 'goalAione' : 'goalBuppan');
+  const goal = parseInt(goalEl.value) || 0;
+  const done = counts.done;
+  const wip = counts.wip;
+  const remaining = Math.max(0, goal - done - wip);
+  const pct = goal > 0 ? Math.min(100, Math.round(done / goal * 100)) : 0;
+  const pctWithWip = goal > 0 ? Math.min(100, Math.round((done + wip) / goal * 100)) : 0;
+
+  // Ring
+  const circumference = 263.9;
+  const ringEl = document.getElementById(type === 'aione' ? 'ringAione' : 'ringBuppan');
+  const ringTextEl = document.getElementById(type === 'aione' ? 'ringTextAione' : 'ringTextBuppan');
+  ringEl.style.strokeDashoffset = circumference - (circumference * pct / 100);
+  ringTextEl.textContent = pct + '%';
+
+  // Stats
+  const prefix = type === 'aione' ? 'goalAione' : 'goalBuppan';
+  document.getElementById(prefix + 'Done').textContent = done + '本';
+  document.getElementById(prefix + 'Wip').textContent = wip + '本';
+  const remainEl = document.getElementById(prefix + 'Remaining');
+  remainEl.textContent = remaining + '本';
+  remainEl.className = 'goal-stat-value ' + (remaining === 0 && goal > 0 ? 'complete-color' : 'remaining-color');
+
+  // Progress bar
+  const donePct = goal > 0 ? (done / goal * 100) : 0;
+  const wipPct = goal > 0 ? (wip / goal * 100) : 0;
+  document.getElementById('goalBar' + (type === 'aione' ? 'Aione' : 'Buppan') + 'Done').style.width = Math.min(100, donePct) + '%';
+  document.getElementById('goalBar' + (type === 'aione' ? 'Aione' : 'Buppan') + 'Wip').style.width = Math.min(100 - donePct, wipPct) + '%';
+}
+
+// =====================
+// フォールバックCSVデータ
+// =====================
+const FALLBACK_AIONE = `NO.,①担当者,①構成案完成予定日,①④進行中,②ドキュメントURL,③WP入稿完成予定日,URL,④WP入稿完成日,KW,タイトル
+2,大宮さん,2025-12-03,FALSE,【下書き】KW ChatGPT 使い方 初心者 ,2026-02-15,https://www.aione.co.jp/chatgpt-beginners-guide/,2026-02-21,ChatGPT 使い方　初心者,【初心者必見】ChatGPTの使い方と基礎知識が今すぐわかる - AI ONE
+8,えりこさん,2026-01-04,FALSE,【尾無枝里子】Gemini 活用事例,2025-01-19,https://www.aione.co.jp/gemini-use-cases/,2026-02-07,Gemini 活用事例,【最新版】Gemini活用事例10選｜生活から仕事までGoogle AIで効率化する方法 - AI ONE
+11,福田さん,2026-01-23,FALSE,【福田浩史】AI ONE　KW：Gemini 料金プラン,2026-01-30,https://www.aione.co.jp/gemini-price-plan/,2026-02-23,Gemini 料金プラン,Gemini料金プランを3つの視点で解説｜無料・有料の違いと課金の判断 - AI ONE
+14,ハナさん,2026-01-28,FALSE, 【ハナ】ChatGPT Go Plus 違い,2026-02-04,https://www.aione.co.jp/chatgpt-go-plus-difference/,2026-02-10,ChatGPT Go Plus 違い,ChatGPT GoとPlusの違いとは？
+12,大宮さん,2026-02-19,TRUE,【大宮絵美子】AI ONE12　ChatGPT 料金プラン,,,,ChatGPT 料金プラン,ChatGPT 料金プラン
+15,リョータさん,2026-02-10,TRUE,【リョータ】KW：Claude 料金プラン,2026-02-20,https://www.aione.co.jp/claude-price-plan/,,Claude 料金プラン,Claude 料金プラン
+16,福田さん,2026-02-10,TRUE,【福田浩史】KW：Gemini 無料 有料 違い,,,,Gemini 無料 有料 違い,Gemini 無料 有料 違い`;
+
+const FALLBACK_BUPPAN = `NO.,①担当者,①構成案完成予定日,①④進行中,②ドキュメントURL,③WP入稿完成予定日,URL,④WP入稿完成日,KW,タイトル
+1,ハナさん,2026-02-07,FALSE,【ハナ】メルカリ 売れる時間,2026-02-09,https://www.buppanone-kazu.co.jp/mercari-selling-time/,2026-02-10,メルカリ 売れる時間,メルカリで売れる時間帯はいつが最強？
+2,ハナさん,2026-02-10,FALSE,【ハナ】メルカリショップとメルカリの違い,2026-02-12,https://www.buppanone-kazu.co.jp/mercari-shops-and-mercari-difference/,2026-02-17,メルカリショップとメルカリの違い,メルカリShopsとメルカリの違いを比較！
+3,ハナさん,2026-02-17,TRUE,【ハナ】メルカリとメルカリショップ どっちが売れる,2026-02-18,https://www.buppanone-kazu.co.jp/mercari-vs-mercari-shops-which-sells-better/,,メルカリとメルカリショップ どっちが売れる,メルカリとメルカリShopsはどっちが売れる？
+6,ハナさん,2026-02-22,TRUE,【ハナ】フリマアプリ 手数料 比較,2026-02-24,https://www.buppanone-kazu.co.jp/flea-market-app-fee-comparison/,,フリマアプリ 手数料 比較,フリマアプリ 手数料 比較
+7,山本さん,2026-02-21,TRUE,【山本 俊之介】ChatGPT 無料 有料 違い,2026-02-25,,,フリマアプリ 初心者 おすすめ,フリマアプリ 初心者 おすすめ`;
+
+// =====================
+// CSV Parser
+// =====================
+function parseCSV(csv) {
+  const lines = csv.trim().split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim().replace(/\n/g, '')] = (values[i] || '').trim());
+    return obj;
+  });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i+1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { result.push(current); current = ''; }
+      else { current += ch; }
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+// =====================
+// Filter & Status
+// =====================
+function isTargetMonth(dateStr) {
+  if (!dateStr || dateStr.length === 0) return false;
+  const match = dateStr.match(/(\d{4})-(\d{2})/);
+  if (!match) return false;
+  return parseInt(match[1]) === TARGET_YEAR && parseInt(match[2]) === TARGET_MONTH;
+}
+
+function filterFebruary(rows) {
+  return rows.filter(row => {
+    const author = row['①担当者'];
+    if (!author || author.length === 0) return false;
+    const completionDate = row['④WP入稿完成日'];
+    const inProgress = row['①④進行中'];
+    if (isTargetMonth(completionDate)) return true;
+    if (inProgress === 'TRUE' && (!completionDate || completionDate.length === 0)) return true;
+    return false;
+  });
+}
+
+function getStatus(row) {
+  const completionDate = row['④WP入稿完成日'];
+  const inProgress = row['①④進行中'];
+  const author = row['①担当者'];
+  if (completionDate && completionDate.length > 0) return 'done';
+  if (inProgress === 'TRUE') return 'wip';
+  if (author && author.length > 0) return 'todo';
+  return null;
+}
+
+function getStatusLabel(status) {
+  if (status === 'done') return '完了';
+  if (status === 'wip') return '進行中';
+  if (status === 'todo') return '未着手';
+  return '';
+}
+
+function countStatuses(articles) {
+  let done = 0, wip = 0;
+  articles.forEach(row => {
+    const s = getStatus(row);
+    if (s === 'done') done++;
+    else if (s === 'wip') wip++;
+  });
+  return { done, wip, total: articles.length };
+}
+
+// =====================
+// Tab Switching
+// =====================
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('tabAione').className = 'tab-btn' + (tab === 'aione' ? ' active-aione' : '');
+  document.getElementById('tabBuppan').className = 'tab-btn' + (tab === 'buppan' ? ' active-buppan' : '');
+  document.getElementById('panelAione').className = 'tab-panel' + (tab === 'aione' ? ' active' : '');
+  document.getElementById('panelBuppan').className = 'tab-panel theme-buppan' + (tab === 'buppan' ? ' active' : '');
+}
+
+// =====================
+// Render Blog Section
+// =====================
+function renderBlog(articles, panelId) {
+  const panel = document.getElementById(panelId);
+  const blogKey = panelId === 'panelAione' ? 'aione' : 'buppan';
+
+  if (articles.length === 0) {
+    panel.innerHTML = '<div class="empty-state">この月の記事データはありません</div>';
+    return;
+  }
+
+  let totalDone = 0, totalWip = 0, totalTodo = 0;
+  const authorMap = {};
+
+  articles.forEach(row => {
+    const author = row['①担当者'];
+    const status = getStatus(row);
+    if (!authorMap[author]) authorMap[author] = { done: [], wip: [], todo: [] };
+    if (status === 'done') { authorMap[author].done.push(row); totalDone++; }
+    else if (status === 'wip') { authorMap[author].wip.push(row); totalWip++; }
+    else { authorMap[author].todo.push(row); totalTodo++; }
+  });
+
+  const total = articles.length;
+  let html = '';
+
+  html += `
+    <div class="summary-cards">
+      <div class="card total"><div class="number">${total}</div><div class="label">全記事数</div></div>
+      <div class="card done"><div class="number">${totalDone}</div><div class="label">完了</div></div>
+      <div class="card wip"><div class="number">${totalWip}</div><div class="label">進行中</div></div>
+      <div class="card todo"><div class="number">${totalTodo}</div><div class="label">未着手</div></div>
+    </div>`;
+
+  const authors = Object.keys(authorMap);
+  html += '<div class="section"><h2>担当者別 進捗状況</h2>';
+  authors.forEach(author => {
+    const a = authorMap[author];
+    const aTotal = a.done.length + a.wip.length + a.todo.length;
+    const donePct = aTotal > 0 ? (a.done.length / aTotal * 100).toFixed(1) : 0;
+    const wipPct = aTotal > 0 ? (a.wip.length / aTotal * 100).toFixed(1) : 0;
+    const todoPct = aTotal > 0 ? (a.todo.length / aTotal * 100).toFixed(1) : 0;
+    const authorGoal = getAuthorGoal(blogKey, author);
+    const goalPct = authorGoal > 0 ? Math.min(100, Math.round(a.done.length / authorGoal * 100)) : 0;
+    const goalBarPct = authorGoal > 0 ? Math.min(100, (a.done.length / authorGoal * 100)) : 0;
+    const safeAuthor = author.replace(/'/g, "\\'");
+    html += `
+      <div class="author-row">
+        <div class="author-name">${author}</div>
+        <div class="author-main">
+          <div class="progress-bar-container">
+            ${a.done.length > 0 ? `<div class="progress-segment done" style="width:${donePct}%">${a.done.length}</div>` : ''}
+            ${a.wip.length > 0 ? `<div class="progress-segment wip" style="width:${wipPct}%">${a.wip.length}</div>` : ''}
+            ${a.todo.length > 0 ? `<div class="progress-segment todo-seg" style="width:${todoPct}%">${a.todo.length}</div>` : ''}
+          </div>
+          <div class="author-stats">完了 ${a.done.length} / 進行中 ${a.wip.length} / 未着手 ${a.todo.length}</div>
+        </div>
+        <div class="author-goal-area">
+          <div class="author-goal-input-row">
+            <label>目標</label>
+            <input type="number" class="author-goal-input" min="0" max="99" value="${authorGoal}"
+              onchange="saveAuthorGoal('${blogKey}','${safeAuthor}',this.value); updateAuthorGoalUI(this);"
+              data-done="${a.done.length}">
+            <span>本</span>
+            <span class="author-goal-pct" style="margin-left:6px;">${authorGoal > 0 ? goalPct + '%' : '—'}</span>
+          </div>
+          <div class="author-goal-bar-wrap">
+            <div class="author-goal-bar-fill" style="width:${goalBarPct}%"></div>
+          </div>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+
+  html += '<div class="section"><h2>記事一覧（担当者別）</h2>';
+  authors.forEach(author => {
+    const a = authorMap[author];
+    const allArticles = [...a.wip, ...a.todo, ...a.done];
+    const aTotal = allArticles.length;
+    const completionRate = aTotal > 0 ? Math.round(a.done.length / aTotal * 100) : 0;
+    html += `
+      <div class="author-detail">
+        <h3 onclick="this.nextElementSibling.classList.toggle('hidden')">
+          <span>${author}</span>
+          <span style="font-size:13px;">(${aTotal}件 / 完了率 ${completionRate}%)</span>
+          <span class="toggle">▼ クリックで開閉</span>
+        </h3>
+        <div>
+          <table class="detail-table">
+            <thead>
+              <tr><th>No.</th><th>キーワード</th><th>ステータス</th><th>構成案予定日</th><th>WP入稿予定日</th><th>WP完成日</th></tr>
+            </thead>
+            <tbody>
+              ${allArticles.map(row => {
+                const status = getStatus(row);
+                const url = row['URL'];
+                const kwCell = url && url.startsWith('http')
+                  ? `<a class="kw-link" href="${url}" target="_blank">${row['KW']}</a>`
+                  : row['KW'];
+                return `<tr>
+                  <td>${row['NO.']}</td>
+                  <td>${kwCell}</td>
+                  <td><span class="status-badge ${status === 'todo' ? 'todo-status' : status}">${getStatusLabel(status)}</span></td>
+                  <td>${row['①構成案完成予定日'] || ''}</td>
+                  <td>${row['③WP入稿完成予定日'] || ''}</td>
+                  <td>${row['④WP入稿完成日'] || '—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+
+  panel.innerHTML = html;
+}
+
+// =====================
+// Data Fetching
+// =====================
+let isLoading = false;
+
+// ヘッダー名の正規化マップ（AIONE等で①プレフィックスが無い場合に補完）
+var HEADER_NORMALIZE = {
+  '担当者': '①担当者',
+  '構成案完成予定日': '①構成案完成予定日',
+  '進行中': '①④進行中',
+  'ドキュメントURL': '②ドキュメントURL',
+  'WP入稿完成予定日': '③WP入稿完成予定日',
+  'WP入稿完成日': '④WP入稿完成日'
+};
+
+// Google Visualization APIレスポンスをパース
+function parseGvizData(data) {
+  if (data.status === 'error') {
+    var msg = (data.errors && data.errors[0]) ? (data.errors[0].detailed_message || data.errors[0].message) : 'Sheet error';
+    throw new Error(msg);
+  }
+  var cols = data.table.cols;
+  var headers = cols.map(function(c) {
+    var h = (c.label || '').replace(/\n/g, '');
+    return HEADER_NORMALIZE[h] || h;
+  });
+  var types = cols.map(function(c) { return c.type; });
+  return data.table.rows.map(function(r) {
+    var obj = {};
+    (r.c || []).forEach(function(cell, i) {
+      if (i >= headers.length || !headers[i]) return;
+      var key = headers[i];
+      var val = '';
+      if (cell && cell.v != null) {
+        if (types[i] === 'date' || types[i] === 'datetime') {
+          var dateStr = String(cell.v);
+          var parts = dateStr.match(/Date\((\d+),(\d+),(\d+)/);
+          if (parts) {
+            val = parts[1] + '-' +
+              String(parseInt(parts[2]) + 1).padStart(2, '0') + '-' +
+              String(parseInt(parts[3])).padStart(2, '0');
+          } else if (cell.f) {
+            val = cell.f;
+          }
+        } else if (typeof cell.v === 'boolean') {
+          val = cell.v ? 'TRUE' : 'FALSE';
+        } else if (cell.f != null) {
+          val = cell.f;
+        } else {
+          val = cell.v;
+        }
+      }
+      obj[key] = String(val);
+    });
+    return obj;
+  });
+}
+
+// fetchのgvizレスポンステキストをパース
+function parseGvizText(text) {
+  var cleaned = text.replace(/^\/\*[\s\S]*?\*\/\s*/, '');
+  var match = cleaned.match(/^[a-zA-Z0-9_.]+\(([\s\S]+)\);?\s*$/);
+  if (!match) throw new Error('Invalid gviz response');
+  return parseGvizData(JSON.parse(match[1]));
+}
+
+// scriptタグ注入によるデータ取得（CORS回避・file://対応）
+function fetchSheetViaScript(gid) {
+  return new Promise(function(resolve, reject) {
+    var callbackName = '_gvizCb_' + gid + '_' + Date.now();
+    var timer, scriptEl;
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      if (scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+      clearTimeout(timer);
+      try { resolve(parseGvizData(data)); }
+      catch(e) { reject(e); }
+    };
+    var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID +
+      '/gviz/tq?tqx=responseHandler:' + callbackName + '&gid=' + gid + '&headers=1';
+    scriptEl = document.createElement('script');
+    scriptEl.src = url;
+    scriptEl.onerror = function() {
+      delete window[callbackName];
+      if (scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+      clearTimeout(timer);
+      reject(new Error('スプレッドシートへの接続に失敗'));
+    };
+    document.head.appendChild(scriptEl);
+    timer = setTimeout(function() {
+      delete window[callbackName];
+      if (scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+      reject(new Error('タイムアウト'));
+    }, 20000);
+  });
+}
+
+// シートデータ取得（fetch → CORS失敗時はscriptタグにフォールバック）
+async function fetchSheetData(gid) {
+  try {
+    var url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID +
+      '/gviz/tq?tqx=out:json&gid=' + gid + '&headers=1';
+    var response = await fetch(url);
+    var text = await response.text();
+    return parseGvizText(text);
+  } catch (e) {
+    return fetchSheetViaScript(gid);
+  }
+}
+
+function loadFromFallback() {
+  return {
+    aione: parseCSV(FALLBACK_AIONE),
+    buppan: parseCSV(FALLBACK_BUPPAN)
+  };
+}
+
+async function fetchAndRender() {
+  if (isLoading) return;
+  isLoading = true;
+
+  var btn = document.getElementById('btnRefresh');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 取得中...';
+
+  var source = 'local';
+  var aioneRows = [];
+  var buppanRows = [];
+
+  try {
+    var results = await Promise.all([
+      fetchSheetData(GID_AIONE),
+      fetchSheetData(GID_BUPPAN)
+    ]);
+    aioneRows = results[0];
+    buppanRows = results[1];
+    source = 'api';
+  } catch (e) {
+    console.warn('スプレッドシート取得に失敗。ローカルデータを使用:', e);
+    var fallback = loadFromFallback();
+    aioneRows = fallback.aione;
+    buppanRows = fallback.buppan;
+  }
+
+  if (source === 'api') {
+    document.getElementById('dataSourceBadge').innerHTML =
+      '<span class="data-source-badge live"><span class="dot"></span>スプレッドシートと同期中</span>';
+  } else {
+    document.getElementById('dataSourceBadge').innerHTML =
+      '<span class="data-source-badge local"><span class="dot"></span>ローカルデータ（オフライン）</span>';
+  }
+
+  var timeStr = source === 'api'
+    ? new Date().toLocaleString('ja-JP')
+    : new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('lastUpdated').textContent = '最終更新: ' + timeStr;
+
+  // AI ONE
+  var aioneFiltered = filterFebruary(aioneRows);
+  renderBlog(aioneFiltered, 'panelAione');
+  latestCounts.aione = countStatuses(aioneFiltered);
+
+  // 物販ONE
+  var buppanFiltered = filterFebruary(buppanRows);
+  renderBlog(buppanFiltered, 'panelBuppan');
+  latestCounts.buppan = countStatuses(buppanFiltered);
+
+  // Update tab counts
+  document.getElementById('countAione').textContent = aioneFiltered.length + '件';
+  document.getElementById('countBuppan').textContent = buppanFiltered.length + '件';
+
+  // Update goals
+  updateGoals();
+
+  btn.disabled = false;
+  btn.innerHTML = '↻ データを更新';
+  isLoading = false;
+}
+
+// ライター目標UIの即時更新
+function updateAuthorGoalUI(inputEl) {
+  const goal = parseInt(inputEl.value) || 0;
+  const done = parseInt(inputEl.dataset.done) || 0;
+  const pct = goal > 0 ? Math.min(100, Math.round(done / goal * 100)) : 0;
+  const barPct = goal > 0 ? Math.min(100, (done / goal * 100)) : 0;
+  const row = inputEl.closest('.author-goal-area');
+  const pctEl = row.querySelector('.author-goal-pct');
+  const barEl = row.querySelector('.author-goal-bar-fill');
+  pctEl.textContent = goal > 0 ? pct + '%' : '—';
+  barEl.style.width = barPct + '%';
+}
+
+// 初期化
+loadGoals();
+fetchAndRender();
+
+setInterval(fetchAndRender, 5 * 60 * 1000);
+</script>
+</body>
+</html>
